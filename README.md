@@ -6,6 +6,12 @@
 
 ## Lexer
 
+When using it for the first time, run the install command
+
+```bash
+poetry install
+```
+
 To use the lexer, run the following command:  
 
 ```bash
