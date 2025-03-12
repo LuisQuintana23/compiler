@@ -37,9 +37,16 @@ def test_punctuation():
     expected = ['PUNCTUATION'] * 5
     assert tokens == expected
 
-def test_string():
-    data = "'This is a string'"
+def test_char():
+    data = "\"Hello world\" \"This a string\""
     lexer.input(data)
     tokens = [tok.type for tok in lexer]
-    expected = ['STRING'] 
+    expected = ['STRING'] * 2
+    assert tokens == expected
+
+def test_char():
+    data = "'c' 'b' 'm' '\0'"
+    lexer.input(data)
+    tokens = [tok.type for tok in lexer]
+    expected = ['CHAR'] * 4
     assert tokens == expected
