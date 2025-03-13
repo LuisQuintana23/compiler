@@ -12,7 +12,6 @@ tokens = (
     'STRING',
 )
 
-# regular expressions
 t_KEYWORD = r'\b(?:auto|const|double|float|int|short|struct|unsigned|break|continue|else|for|long|signed|switch|void|case|default|enum|goto|register|sizeof|typedef|volatile|char|dor|extern|if|return|static|union|while)\b'
 t_OPERATOR = r'(\+\+|--|->|==|!=|<=|>=|&&|\|\||[+\-*/%=<>!&|^~])'
 t_CONSTANT = r'(\d+(\.\d+)?([eE][+-]?\d+)?|0[xX][0-9a-fA-F]+|0[0-7]*)'
@@ -37,7 +36,6 @@ def t_error(t):
 
 lexer = lex.lex()
 
-# load the input file
 def process_file(file_path):
     if not os.path.exists(file_path):
         print(f"File '{file_path}' not found")
@@ -48,7 +46,6 @@ def process_file(file_path):
 
     lexer.input(data)
 
-    # show tokens
     while True:
         tok = lexer.token()
         if not tok:
