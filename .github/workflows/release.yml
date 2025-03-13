@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    name: Build and Release Binaries
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+    
+      - name: Run Tests with pytest
+        run: |
+          poetry run pytest --maxfail=1 --disable-warnings -q
+
+      - name: Build Executable
+        run: poetry run build
+
+      - name: Rename Binary (Linux)
+        if: runner.os == 'Linux'
+        run: mv dist/unam.fi.compilers.g5.06 unam.fi.compilers.g5.06
+
+      - name: Rename Binary (Windows)
+        if: runner.os == 'Windows'
+        run: mv dist/unam.fi.compilers.g5.06.exe unam.fi.compilers.g5.06.exe
+
+      - name: Upload Artifacts (Linux)
+        uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: unam.fi.compilers.g5.06
+          path: |
+            unam.fi.compilers.g5.06
+
+      - name: Upload Artifacts (Windows)
+        uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: unam.fi.compilers.g5.06.exe
+          path: |
+            unam.fi.compilers.g5.06.exe
+    
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          pattern: unam.fi.compilers.g5.06*
+          merge-multiple: true
+      - run: ls -R dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          token: ${{ secrets.DEPLOY_TOKEN }}
