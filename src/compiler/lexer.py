@@ -8,8 +8,7 @@ tokens = (
     'OPERATOR', 
     'CONSTANT', 
     'PUNCTUATION',
-    'CHAR',
-    'STRING',
+    'LITERAL',
 )
 
 # regular expressions
@@ -18,8 +17,7 @@ t_OPERATOR = r'(\+\+|--|->|==|!=|<=|>=|&&|\|\||[+\-*/%=<>!&|^~])'
 t_CONSTANT = r'(\d+(\.\d+)?([eE][+-]?\d+)?|0[xX][0-9a-fA-F]+|0[0-7]*)'
 t_PUNCTUATION = r'[()[\]{},;.]'
 t_IDENTIFIER = r'[a-zA-Z_][a-zA-Z_0-9]*'
-t_STRING = r'\"([^\\\n]|(\\.))*?\"'
-t_CHAR = r"'\\" + r"[abfnrtv\\'\"0]'|'.'"
+t_LITERAL = r'\"([^\\\n]|(\\.))*?\"'
 
 t_ignore = ''
 
