@@ -6,7 +6,7 @@ authors = [
     {name = "LuisQuintana23",email = "luisquintana2326@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "ply (>=3.11,<4.0)"
 ]
@@ -16,10 +16,12 @@ packages = [{include = "compiler", from = "src"}]
 
 [tool.poetry.scripts]
 lexer = "compiler.lexer:main"
+build = "build:build"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
 toml = "^0.10.2"
+pyinstaller = "^6.12.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
