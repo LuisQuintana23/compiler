@@ -20,7 +20,6 @@ build = "build:build"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
-toml = "^0.10.2"
 pyinstaller = "^6.12.0"
 
 [build-system]
