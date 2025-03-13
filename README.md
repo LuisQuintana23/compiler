@@ -15,7 +15,7 @@ poetry install
 To use the lexer, run the following command:  
 
 ```bash
-poetry run lexer
+poetry run lexer <file.c>
 ```
 
 ### Testing

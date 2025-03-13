@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build and Release Binaries
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+      
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run Tests with pytest
+        run: |
+          pytest --maxfail=1 --disable-warnings -q
+
+      - name: Build Executable
+        run: poetry run python build.py
+
+      - name: Rename Binary (Linux)
+        if: runner.os == 'Linux'
+        run: mv dist/unam.fi.compilers.g5.06 unam.fi.compilers.g5.06-linux
+
+      - name: Rename Binary (Windows)
+        if: runner.os == 'Windows'
+        run: mv dist/unam.fi.compilers.g5.06.exe unam.fi.compilers.g5.06-windows.exe
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            unam.fi.compilers.g5.06-linux
+            unam.fi.compilers.g5.06-windows.exe
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,5 +1,7 @@
 import ply.lex as lex
+import sys
 import os
+import toml
 
 tokens = (
     'KEYWORD', 
@@ -37,9 +39,10 @@ def t_error(t):
 lexer = lex.lex()
 
 # load the input file
-def process_file(file_name):
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(base_path, file_name)
+def process_file(file_path):
+    if not os.path.exists(file_path):
+        print(f"File '{file_path}' not found")
+        sys.exit(1)
 
     with open(file_path, 'r') as f:
         data = f.read()
@@ -55,10 +58,22 @@ def process_file(file_name):
 
     print(f"Number of lines: {lexer.lineno}")
 
+def get_app_name():
+    try:
+        with open('pyproject.toml', 'r') as f:
+            config = toml.load(f)
+        return config['project']['name']
+    except Exception as e:
+        print(f"Can't read pyproject.toml: {e}")
+        return None
 
-def start():
-    file_name = 'program.c'
-    process_file(file_name=file_name)
+def main():
+    APP_NAME = get_app_name()
+    if len(sys.argv) != 2:
+        print(f"Use: {APP_NAME} <file.c>")
+        sys.exit(1)
+    file_path = sys.argv[1]
+    process_file(file_path)
 
 if __name__ == "__main__":
-    start()
+    main()
