@@ -27,16 +27,13 @@ jobs:
 
       - name: Install dependencies
         run: poetry install
-      
-      - name: Install pytest
-        run: pip install pytest
-
+    
       - name: Run Tests with pytest
         run: |
-          pytest --maxfail=1 --disable-warnings -q
+          poetry run pytest --maxfail=1 --disable-warnings -q
 
       - name: Build Executable
-        run: poetry run python build.py
+        run: poetry run build
 
       - name: Rename Binary (Linux)
         if: runner.os == 'Linux'
