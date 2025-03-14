@@ -1,6 +1,6 @@
 [project]
 name = "unam.fi.compilers.g5.06"
-version = "0.1.0"
+version = "0.1.2"
 description = "Compiler created in Python for C language"
 authors = [
     {name = "LuisQuintana23",email = "luisquintana2326@gmail.com"}
