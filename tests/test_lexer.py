@@ -3,10 +3,10 @@ import ply.lex as lex
 from src.compiler.lexer import lexer
 
 def test_keywords():
-    data = "if else while for return int"
+    data = "auto const double float int short struct unsigned break continue else for long signed switch void case default enum goto register sizeof typedef volatile char do extern if return static union while"
     lexer.input(data)
     tokens = [tok.type for tok in lexer]
-    expected = ['KEYWORD'] * 6
+    expected = ['KEYWORD'] * len(data.split(' '))
     assert tokens == expected
 
 def test_identifiers():
