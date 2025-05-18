@@ -8,17 +8,22 @@ tokens = (
     'IDENTIFIER', 
     'OPERATOR', 
     'CONSTANT', 
-    'PUNCTUATION',
     'LITERAL',
+    'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE', 'SEMI', 'COMMA'
 )
 
 # Regular expressions
 t_KEYWORD = r'\b(?:auto|const|double|float|int|short|struct|unsigned|break|continue|else|for|long|signed|switch|void|case|default|enum|goto|register|sizeof|typedef|volatile|char|do|extern|if|return|static|union|while)\b'
 t_OPERATOR = r'(\+\+|--|->|==|!=|<=|>=|&&|\|\||[+\-*/%=<>!&|^~])'
 t_CONSTANT = r'(\d+(\.\d+)?([eE][+-]?\d+)?|0[xX][0-9a-fA-F]+|0[0-7]*)'
-t_PUNCTUATION = r'[()[\]{},;.]'
 t_IDENTIFIER = r'[a-zA-Z_][a-zA-Z_0-9]*'
 t_LITERAL = r'\"([^\\\n]|(\\.))*?\"'
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
+t_LBRACE = r'\{'
+t_RBRACE = r'\}'
+t_SEMI = r';'
+t_COMMA = r','
 
 t_ignore = ' \t\r\f\v'
 

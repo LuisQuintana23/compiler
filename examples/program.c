@@ -1,6 +1,6 @@
-int main() {
+int main () {
     int x = 10;
-    printf("Hello, World!");
-
+    x = x + 1;
+    printf("x is %d");
     return 0;
 }

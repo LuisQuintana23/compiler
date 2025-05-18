@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+# CUSTOM FILES
+src/compiler/parser.out
+src/compiler/parsetab.py

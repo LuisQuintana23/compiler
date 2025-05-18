@@ -16,6 +16,7 @@ packages = [{include = "compiler", from = "src"}]
 
 [tool.poetry.scripts]
 lexer = "compiler.lexer:main"
+parser = "compiler.parser:main"
 build = "build:build"
 
 [tool.poetry.group.dev.dependencies]
