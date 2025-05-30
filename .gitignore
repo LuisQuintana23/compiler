@@ -174,3 +174,11 @@ cython_debug/
 # CUSTOM FILES
 src/compiler/parser.out
 src/compiler/parsetab.py
+
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
