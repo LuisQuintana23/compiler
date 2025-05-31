@@ -1,11 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any, Set, Union
 from enum import Enum, auto
 # to manage the symbol table with a graph
 import networkx as nx
 from lark import Tree, Token
 import sys
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TypeKind(Enum):
     INT = auto()
@@ -55,6 +58,7 @@ class Symbol:
     scope_level: int = 0
     line: int = 0
     column: int = 0
+    body: Optional[Tree] = None
 
     def __str__(self) -> str:
         return f"{self.name}: {self.type} (scope: {self.scope_level})"
@@ -74,33 +78,51 @@ class SymbolTable:
         # the global scope is the root of our scope hierarchy
         # all other scopes are descendants of the global scope
         self._add_scope(0, "global")
+        logger.debug("Initialized symbol table with global scope")
+        logger.debug(f"Graph nodes: {list(self.graph.nodes())}")
+        logger.debug(f"Graph edges: {list(self.graph.edges())}")
 
     def _add_scope(self, scope_id: int, name: str):
         """add a new scope node to the graph
         scopes are nodes that represent variable visibility levels
         connected in a tree where parent scopes are visible to children"""
         self.graph.add_node(scope_id, name=name, type="scope")
+        logger.debug(f"Added scope {scope_id} with name {name}")
+        logger.debug(f"Graph nodes after adding scope: {list(self.graph.nodes())}")
+        logger.debug(f"Graph edges after adding scope: {list(self.graph.edges())}")
 
     def enter_scope(self, name: str = None):
         """enter a new scope level
         called when entering a new code block (function, if, while)
         creates a child scope where variables are visible to inner scopes only"""
         new_scope = self.current_scope + 1
-        self._add_scope(new_scope, name or f"scope_{new_scope}")
+        # Create a new scope node with a unique ID
+        scope_id = len(self.graph.nodes())
+        self._add_scope(scope_id, name or f"scope_{scope_id}")
         # connect the new scope to its parent
         # this edge represents the "contains" relationship
         # parent scopes contain their children
-        self.graph.add_edge(self.current_scope, new_scope, type="contains")
-        self.scope_stack.append(new_scope)
-        self.current_scope = new_scope
+        self.graph.add_edge(self.current_scope, scope_id, type="contains")
+        self.scope_stack.append(scope_id)
+        self.current_scope = scope_id
+        logger.debug(f"Entered scope {scope_id} (parent: {self.current_scope})")
+        logger.debug(f"Graph nodes after entering scope: {list(self.graph.nodes())}")
+        logger.debug(f"Graph edges after entering scope: {list(self.graph.edges())}")
+        # Log the attributes of all nodes to verify they haven't changed
+        for node in self.graph.nodes():
+            logger.debug(f"Node {node} attributes after entering scope: {self.graph.nodes[node]}")
 
     def exit_scope(self):
         """exit current scope
         called when leaving a code block
         variables in this scope are no longer accessible"""
         if len(self.scope_stack) > 1:
+            old_scope = self.current_scope
             self.scope_stack.pop()
             self.current_scope = self.scope_stack[-1]
+            logger.debug(f"Exited scope {old_scope}, now in scope {self.current_scope}")
+            logger.debug(f"Graph nodes after exiting scope: {list(self.graph.nodes())}")
+            logger.debug(f"Graph edges after exiting scope: {list(self.graph.edges())}")
 
     def add_symbol(self, symbol: Symbol) -> bool:
         """add a symbol to current scope
@@ -112,17 +134,36 @@ class SymbolTable:
             if self.graph.nodes[node].get('type') == 'symbol' and \
                self.graph.nodes[node].get('name') == symbol.name and \
                node in self.graph.successors(self.current_scope):
+                logger.debug(f"Symbol {symbol.name} already exists in current scope")
                 return False
 
         # add symbol node
         # each symbol is a node in our graph
         # it's connected to its scope with a "defines" edge
         symbol_id = len(self.graph.nodes())
+        logger.debug(f"Adding symbol {symbol.name} with ID {symbol_id}")
+        
+        # Create the symbol node with explicit type='symbol'
         self.graph.add_node(symbol_id, 
-                          type='symbol',
+                          type='symbol',  # Explicitly set type to 'symbol'
                           name=symbol.name,
                           symbol=symbol)
+        
+        # Connect the symbol to its scope
         self.graph.add_edge(self.current_scope, symbol_id, type="defines")
+        
+        # Log the node attributes to verify they are set correctly
+        logger.debug(f"Added symbol node with attributes: {self.graph.nodes[symbol_id]}")
+        logger.debug(f"Added symbol {symbol.name} to scope {self.current_scope}")
+        logger.debug(f"Graph nodes after adding symbol: {list(self.graph.nodes())}")
+        logger.debug(f"Graph edges after adding symbol: {list(self.graph.edges())}")
+        logger.debug(f"Symbol table contents for scope {self.current_scope}:")
+        for node in self.graph.successors(self.current_scope):
+            node_attrs = self.graph.nodes[node]
+            logger.debug(f"  Node {node} attributes: {node_attrs}")
+            if node_attrs.get('type') == 'symbol':
+                sym = node_attrs['symbol']
+                logger.debug(f"  Symbol: {sym.name} (type: {sym.type.kind})")
         return True
 
     def lookup(self, name: str) -> Optional[Symbol]:
@@ -133,24 +174,52 @@ class SymbolTable:
         # this gives us all scopes that contain the current scope
         scopes = nx.ancestors(self.graph, self.current_scope)
         scopes.add(self.current_scope)
+        logger.debug(f"Looking up symbol {name} in scopes: {scopes}")
+        logger.debug(f"Current graph nodes: {list(self.graph.nodes())}")
+        logger.debug(f"Current graph edges: {list(self.graph.edges())}")
 
         # search for symbol in all scopes
         # we search from innermost to outermost scope
         # this implements variable shadowing (inner variables hide outer ones)
         for scope in scopes:
+            logger.debug(f"Checking scope {scope} for symbol {name}")
             for node in self.graph.successors(scope):
                 if self.graph.nodes[node].get('type') == 'symbol' and \
                    self.graph.nodes[node].get('name') == name:
-                    return self.graph.nodes[node]['symbol']
+                    symbol = self.graph.nodes[node]['symbol']
+                    logger.debug(f"Found symbol {name} in scope {scope}")
+                    return symbol
+        logger.debug(f"Symbol {name} not found in any scope")
         return None
 
     def get_scope_symbols(self, scope_id: int) -> List[Symbol]:
         """get all symbols in a specific scope
         returns variables and functions declared in the given scope"""
         symbols = []
+        logger.debug(f"Getting symbols for scope {scope_id}")
+        logger.debug(f"Current graph nodes: {list(self.graph.nodes())}")
+        logger.debug(f"Current graph edges: {list(self.graph.edges())}")
+        
+        # Get all nodes that are directly connected to this scope
         for node in self.graph.successors(scope_id):
-            if self.graph.nodes[node].get('type') == 'symbol':
-                symbols.append(self.graph.nodes[node]['symbol'])
+            node_attrs = self.graph.nodes[node]
+            logger.debug(f"Checking node {node} in scope {scope_id}")
+            logger.debug(f"Node attributes: {node_attrs}")
+            
+            # A symbol node should have type='symbol' and a 'symbol' attribute
+            if node_attrs.get('type') == 'symbol' and 'symbol' in node_attrs:
+                symbol = node_attrs['symbol']
+                logger.debug(f"Found symbol in scope {scope_id}: {symbol.name} (type: {symbol.type.kind})")
+                symbols.append(symbol)
+            else:
+                logger.debug(f"Node {node} is not a symbol (type: {node_attrs.get('type')})")
+                # Log all attributes to help debug
+                for key, value in node_attrs.items():
+                    logger.debug(f"  {key}: {value}")
+        
+        logger.debug(f"Found {len(symbols)} symbols in scope {scope_id}")
+        for symbol in symbols:
+            logger.debug(f"  Symbol: {symbol.name} (type: {symbol.type.kind})")
         return symbols
 
     def visualize(self, filename: str = "symbol_table"):
@@ -289,6 +358,11 @@ class SemanticAnalyzer:
         else:
             var_name = self.get_identifier_from_node(identifier)
         
+        # For basic types like int, we want to create a pointer type
+        # since variables in C are always pointers to their type
+        if type_info.kind in [TypeKind.INT, TypeKind.FLOAT, TypeKind.CHAR, TypeKind.DOUBLE]:
+            type_info = Type(kind=TypeKind.POINTER, base_type=type_info)
+        
         symbol = Symbol(
             name=var_name,
             type=type_info,
@@ -303,17 +377,20 @@ class SemanticAnalyzer:
                 symbol.column
             )
 
-    def handle_function_declaration(self, declarator: Tree, return_type: Type):
+    def handle_function_declaration(self, declarator: Union[Tree, Token], return_type: Type):
         """handle function declarations"""
-        func_name = self.get_identifier_from_node(declarator)
-        
-        # get parameter types
-        param_types = []
-        if len(declarator.children) > 1 and declarator.children[1].data == 'parameter_list':
-            for param in declarator.children[1].children:
-                if param.data == 'parameter_declaration':
-                    param_type = self.get_type_from_node(param.children[0])
-                    param_types.append(param_type)
+        if isinstance(declarator, Token):
+            func_name = declarator.value
+            param_types = []  # No parameters for simple function declarations
+        else:
+            func_name = self.get_identifier_from_node(declarator)
+            # get parameter types
+            param_types = []
+            if len(declarator.children) > 1 and isinstance(declarator.children[1], Tree) and declarator.children[1].data == 'parameter_list':
+                for param in declarator.children[1].children:
+                    if param.data == 'parameter_declaration':
+                        param_type = self.get_type_from_node(param.children[0])
+                        param_types.append(param_type)
         
         func_type = Type(
             kind=TypeKind.FUNCTION,
@@ -328,28 +405,65 @@ class SemanticAnalyzer:
             column=getattr(declarator, 'column', 0)
         )
         
+        # Add the function symbol to the current scope (global scope for functions)
         if not self.symbol_table.add_symbol(symbol):
             raise SemanticError(
                 f"function '{func_name}' already declared",
                 symbol.line,
                 symbol.column
             )
+        logger.debug(f"Added function symbol {func_name} to scope {self.symbol_table.current_scope}")
 
     def visit_function_definition(self, node: Tree):
         """handle function definitions"""
         # the declarator is the second child of the function definition
         declarator = node.children[1]
         func_name = self.get_identifier_from_node(declarator)
+        logger.debug(f"Processing function definition: {func_name}")
         
+        # Get the function symbol
+        symbol = self.symbol_table.lookup(func_name)
+        if not symbol:
+            # If the function wasn't declared before, create it now
+            logger.debug(f"Function {func_name} not found in symbol table, creating new symbol")
+            return_type = self.get_type_from_node(node.children[0])
+            self.handle_function_declaration(declarator, return_type)
+            symbol = self.symbol_table.lookup(func_name)
+            logger.debug(f"Created new symbol for {func_name}: {symbol}")
+        else:
+            logger.debug(f"Found existing symbol for {func_name}: {symbol}")
+        
+        # Store the function body in the symbol
+        if len(node.children) > 2:
+            logger.debug(f"Storing body for function {func_name}")
+            logger.debug(f"Body type: {type(node.children[2])}")
+            logger.debug(f"Body data: {node.children[2].data}")
+            symbol.body = node.children[2]
+            logger.debug(f"Stored body for function '{func_name}': type={type(symbol.body)}, content={repr(symbol.body)}")
+            logger.debug(f"Verifying body was stored: {symbol.body is not None}")
+            # Verify the symbol node still has type='symbol'
+            for node_id in self.symbol_table.graph.nodes():
+                node_attrs = self.symbol_table.graph.nodes[node_id]
+                if node_attrs.get('name') == func_name:
+                    logger.debug(f"Function symbol node {node_id} attributes: {node_attrs}")
+                    if node_attrs.get('type') != 'symbol':
+                        logger.error(f"Function symbol node has wrong type: {node_attrs.get('type')}")
+        else:
+            logger.debug(f"No body found for function {func_name}")
+        
+        # Create a new scope for the function body
+        # Note: We don't store the function symbol in this scope, it's already in the global scope
         self.symbol_table.enter_scope(f"function_{func_name}")
         self.current_function = func_name
         
         # process function body (compound statement)
         if len(node.children) > 2:
+            logger.debug(f"Processing body for function {func_name}")
             self.visit(node.children[2])
         
         self.symbol_table.exit_scope()
         self.current_function = None
+        logger.debug(f"Finished processing function {func_name}")
 
     def visit_compound_statement(self, node: Tree):
         """handle compound statements (blocks)"""
@@ -425,22 +539,40 @@ class SemanticAnalyzer:
         if line is None and len(node.children) > 1:
             line = getattr(node.children[1].children[0], 'line', None)
         
-        # check for type mismatches
-        if symbol.type.kind != expr_type.kind:
-            if symbol.type.kind == TypeKind.FLOAT and expr_type.kind == TypeKind.INT:
-                # check if this was an integer division
-                if isinstance(expr_node, Tree):
-                    if getattr(expr_node, 'is_integer_division', False):
-                        self.warnings.append(
-                            f"warning: integer division assigned to float variable '{var_name}' at line {line} "
-                            "this may cause precision loss"
-                        )
-            else:
-                raise SemanticError(
-                    f"type mismatch in assignment: cannot assign {expr_type} to {symbol.type}",
-                    line,
-                    getattr(node, 'column', None)
-                )
+        # For pointer types (variables), we need to check against the base type
+        if symbol.type.kind == TypeKind.POINTER:
+            if symbol.type.base_type.kind != expr_type.kind:
+                if symbol.type.base_type.kind == TypeKind.FLOAT and expr_type.kind == TypeKind.INT:
+                    # check if this was an integer division
+                    if isinstance(expr_node, Tree):
+                        if getattr(expr_node, 'is_integer_division', False):
+                            self.warnings.append(
+                                f"warning: integer division assigned to float variable '{var_name}' at line {line} "
+                                "this may cause precision loss"
+                            )
+                else:
+                    raise SemanticError(
+                        f"type mismatch in assignment: cannot assign {expr_type} to {symbol.type.base_type}",
+                        line,
+                        getattr(node, 'column', None)
+                    )
+        else:
+            # For non-pointer types, check directly
+            if symbol.type.kind != expr_type.kind:
+                if symbol.type.kind == TypeKind.FLOAT and expr_type.kind == TypeKind.INT:
+                    # check if this was an integer division
+                    if isinstance(expr_node, Tree):
+                        if getattr(expr_node, 'is_integer_division', False):
+                            self.warnings.append(
+                                f"warning: integer division assigned to float variable '{var_name}' at line {line} "
+                                "this may cause precision loss"
+                            )
+                else:
+                    raise SemanticError(
+                        f"type mismatch in assignment: cannot assign {expr_type} to {symbol.type}",
+                        line,
+                        getattr(node, 'column', None)
+                    )
         
         symbol.is_initialized = True
         return node
