@@ -534,10 +534,15 @@ class SemanticAnalyzer:
         # get the type of the right-hand side expression
         expr_type = self.get_expression_type(node.children[1])
         
-        # get line number from the assignment operator or the expression
-        line = getattr(node.children[1], 'line', None)
-        if line is None and len(node.children) > 1:
-            line = getattr(node.children[1].children[0], 'line', None)
+        # get line and column from the assignment node itself
+        line = getattr(node, 'line', None)
+        column = getattr(node, 'column', None)
+        
+        # if not found in the node, try to get from the identifier
+        if line is None:
+            line = getattr(node.children[0], 'line', None)
+        if column is None:
+            column = getattr(node.children[0], 'column', None)
         
         # For pointer types (variables), we need to check against the base type
         if symbol.type.kind == TypeKind.POINTER:
@@ -554,7 +559,7 @@ class SemanticAnalyzer:
                     raise SemanticError(
                         f"type mismatch in assignment: cannot assign {expr_type} to {symbol.type.base_type}",
                         line,
-                        getattr(node, 'column', None)
+                        column
                     )
         else:
             # For non-pointer types, check directly
@@ -571,7 +576,7 @@ class SemanticAnalyzer:
                     raise SemanticError(
                         f"type mismatch in assignment: cannot assign {expr_type} to {symbol.type}",
                         line,
-                        getattr(node, 'column', None)
+                        column
                     )
         
         symbol.is_initialized = True
