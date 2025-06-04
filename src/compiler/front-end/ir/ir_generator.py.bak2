@@ -1,0 +1,41 @@
+from llvmlite import ir
+
+def main():
+    # Crear módulo
+    module = ir.Module(name="main_module")
+
+    # Declarar la función printf
+    printf_ty = ir.FunctionType(ir.IntType(32), [ir.PointerType(ir.IntType(8))], var_arg=True)
+    printf = ir.Function(module, printf_ty, name="printf")
+
+    # Declarar la función main
+    main_ty = ir.FunctionType(ir.IntType(32), [])
+    main_fn = ir.Function(module, main_ty, name="main")
+    block = main_fn.append_basic_block(name="entry")
+    builder = ir.IRBuilder(block)
+
+    # Variable x
+    x_ptr = builder.alloca(ir.IntType(32), name="x")
+    builder.store(ir.Constant(ir.IntType(32), 10), x_ptr)
+
+    # Crear el string "Hello, World!\00"
+    hello_str = "Hello, World!\n\0"
+    str_const = ir.Constant(ir.ArrayType(ir.IntType(8), len(hello_str)),
+                            bytearray(hello_str.encode("utf8")))
+    str_var = ir.GlobalVariable(module, str_const.type, name="str")
+    str_var.linkage = 'internal'
+    str_var.global_constant = True
+    str_var.initializer = str_const
+    str_ptr = builder.bitcast(str_var, ir.PointerType(ir.IntType(8)))
+
+    # Llamar a printf
+    builder.call(printf, [str_ptr])
+
+    # Retornar 0
+    builder.ret(ir.Constant(ir.IntType(32), 0))
+
+    # Mostrar IR generado
+    print(module)
+
+if __name__ == "__main__":
+    main()

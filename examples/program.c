@@ -1,6 +1,6 @@
 int main() {
     int x;
     x = 10;
-    printf("Hello, World!");
+    printf("It works!");
     return 0;
 }
