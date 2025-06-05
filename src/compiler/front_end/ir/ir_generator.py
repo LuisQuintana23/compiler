@@ -109,7 +109,7 @@ class LLVMGenerator:
 
     def generate(self):
         self.generate_main()
-        return str(self.module)
+        return self.module
 
 
 def main():
@@ -136,7 +136,7 @@ def main():
     if success:
         llvm_gen = LLVMGenerator(analyzer.symbol_table)
         llvm_ir = llvm_gen.generate()
-        print(llvm_ir)
+        print(str(llvm_ir))
     else:
         for err in analyzer.errors:
             print(err)

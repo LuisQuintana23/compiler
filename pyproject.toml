@@ -14,17 +14,19 @@ dependencies = [
     "typing-extensions (>=4.8.0,<5.0)",
     "graphviz (>=0.20.1,<1.0)",
     "networkx (>=3.5,<4.0)",
-    "matplotlib (>=3.10.3,<4.0.0)"
+    "matplotlib (>=3.10.3,<4.0.0)",
+    "colorama (>=0.4.6,<1.0)"
 ]
 
 [tool.poetry]
 packages = [{include = "compiler", from = "src"}]
 
 [tool.poetry.scripts]
-parser = "compiler.front-end.analysis.parser:main"
-semantic = "compiler.front-end.analysis.semantic:main"
-ir = "compiler.front-end.ir.ir_generator:main"
-codegen = "compiler.code_gen.code_generator:main"
+parser = "compiler.front_end.analysis.parser:main"
+semantic = "compiler.front_end.analysis.semantic:main"
+ir = "compiler.front_end.ir.ir_generator:main"
+codegen = "compiler.codegen.code_generator:main"
+cli = "compiler.cli.cli:main"
 build = "build:build"
 
 [tool.poetry.group.dev.dependencies]

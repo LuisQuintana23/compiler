@@ -20,7 +20,7 @@ def create_parser():
 
 def parse_c_code(parser, code):
     """
-    Parse c code using the provided parser.
+    Parse c code using the provided parser
     
     Args:
         parser: Lark parser instance
@@ -37,7 +37,7 @@ def parse_c_code(parser, code):
 
 def read_c_file(file_path):
     """
-    Read c source code from a file.
+    Read c source code from a file
     
     Args:
         file_path (str): Path to the c source file
@@ -60,7 +60,7 @@ def read_c_file(file_path):
 
 def visualize_tree(tree, output_file):
     """
-    Create a visual representation of the parse tree using Graphviz.
+    Create a visual representation of the parse tree using Graphviz
     
     Args:
         tree: Lark ParseTree object
@@ -71,43 +71,43 @@ def visualize_tree(tree, output_file):
     
     def add_node(node, parent_id=None):
         if isinstance(node, Tree):
-            # Create a unique ID for this node
+            # create a unique id for this node
             node_id = str(id(node))
             
-            # Add the node with its rule name
+            # add the node with its rule name
             dot.node(node_id, node.data, shape='box')
             
-            # Connect to parent if it exists
+            # connect to parent if it exists
             if parent_id is not None:
                 dot.edge(parent_id, node_id)
             
-            # Add all children
+            # add all children
             for child in node.children:
                 add_node(child, node_id)
         else:
-            # For tokens, create a leaf node
+            # for tokens, create a leaf node
             node_id = str(id(node))
             label = f"{node.type}: {node.value}" if hasattr(node, 'type') else str(node)
             dot.node(node_id, label, shape='ellipse')
             if parent_id is not None:
                 dot.edge(parent_id, node_id)
     
-    # Start building the tree from the root
+    # start building the tree from the root
     add_node(tree)
     
-    # Save the visualization
+    # save the visualization
     dot.render(output_file, format='png', cleanup=True)
     print(f"Tree visualization saved as {output_file}.png")
 
 def print_concise_tree(tree, indent=0):
     """
-    Print a concise version of the parse tree, focusing on main rules.
+    Print a concise version of the parse tree, focusing on main rules
     
     Args:
         tree: Lark ParseTree object
         indent: Current indentation level
     """
-    # Skip printing for certain rules that are too detailed
+    # skip printing for certain rules that are too detailed
     skip_rules = {
         'logical_or_expression', 'logical_and_expression',
         'inclusive_or_expression', 'exclusive_or_expression',
@@ -123,7 +123,7 @@ def print_concise_tree(tree, indent=0):
             for child in tree.children:
                 print_concise_tree(child, indent + 1)
         else:
-            # For skipped rules, just print their tokens
+            # for skipped rules, just print their tokens
             for child in tree.children:
                 if not isinstance(child, Tree):
                     print('  ' * indent + f"Token: {child.type} = {child.value}")
@@ -133,7 +133,7 @@ def print_concise_tree(tree, indent=0):
         print('  ' * indent + f"Token: {tree.type} = {tree.value}")
 
 def main():
-    """Main function to demonstrate the c parser usage."""
+    """Main function to demonstrate the c parser usage"""
     parser = argparse.ArgumentParser(description='Parse C code and optionally visualize the parse tree.')
     parser.add_argument('file_path', help='Path to the C source file to parse')
     parser.add_argument('--tree-image', action='store_true', help='Generate a PNG visualization of the parse tree')
@@ -141,27 +141,27 @@ def main():
     
     args = parser.parse_args()
     
-    # Read the c code from file
+    # read the c code from file
     code = read_c_file(args.file_path)
     if code is None:
         sys.exit(1)
     
-    # Create the parser
+    # create the parser
     parser = create_parser()
     
-    # Parse the code
+    # parse the code
     tree = parse_c_code(parser, code)
     
     if tree:
         print(f"Successfully parsed c code from '{args.file_path}'!")
         
         if args.tree_image:
-            # Generate tree visualization
+            # generate tree visualization
             output_file = Path(args.file_path).stem + '_tree'
             visualize_tree(tree, output_file)
         
         if args.verbose:
-            # Print detailed tree structure
+            # print detailed tree structure
             print("\nDetailed parse tree:")
             print(tree.pretty())
             print("\nTree structure:")
@@ -173,7 +173,7 @@ def main():
                     else:
                         print(f"  Child: {child}")
         else:
-            # Print concise tree structure
+            # print concise tree structure
             print("\nConcise parse tree:")
             print_concise_tree(tree)
 
