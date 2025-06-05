@@ -82,6 +82,46 @@ class SymbolTable:
         logger.debug(f"Graph nodes: {list(self.graph.nodes())}")
         logger.debug(f"Graph edges: {list(self.graph.edges())}")
 
+    def __str__(self) -> str:
+        """Return a string representation of the symbol table showing all scopes and their symbols."""
+        lines = []
+        
+        # Get all scope nodes
+        scope_nodes = [n for n in self.graph.nodes() 
+                      if self.graph.nodes[n].get('type') == 'scope']
+        
+        # Sort scopes by their ID to maintain a consistent order
+        scope_nodes.sort()
+        
+        for scope_id in scope_nodes:
+            scope_name = self.graph.nodes[scope_id].get('name', f'scope_{scope_id}')
+            lines.append(f"\nScope {scope_id} ({scope_name}):")
+            
+            # Get all symbols in this scope
+            symbols = self.get_scope_symbols(scope_id)
+            
+            if not symbols:
+                lines.append("  (empty)")
+            else:
+                # Sort symbols by name for consistent output
+                symbols.sort(key=lambda s: s.name)
+                for symbol in symbols:
+                    # Add extra info for functions
+                    extra_info = ""
+                    if symbol.type.kind == TypeKind.FUNCTION:
+                        if symbol.body is not None:
+                            extra_info = " (defined)"
+                        else:
+                            extra_info = " (declared)"
+                    elif symbol.is_initialized:
+                        extra_info = " (initialized)"
+                    elif symbol.is_constant:
+                        extra_info = " (constant)"
+                        
+                    lines.append(f"  {symbol.name}: {symbol.type}{extra_info}")
+        
+        return "\n".join(lines)
+
     def _add_scope(self, scope_id: int, name: str):
         """add a new scope node to the graph
         scopes are nodes that represent variable visibility levels
@@ -705,7 +745,7 @@ def analyze_c_code(tree: Tree, visualize: bool = False) -> bool:
     """
     analyzer = SemanticAnalyzer()
     success = analyzer.analyze(tree)
-    
+
     if visualize:
         analyzer.symbol_table.visualize()
     
@@ -716,6 +756,10 @@ def analyze_c_code(tree: Tree, visualize: bool = False) -> bool:
     # print errors
     for error in analyzer.errors:
         print(error)
+    
+    # Print symbol table after analysis
+    print("\nSymbol table:")
+    print(analyzer.symbol_table)
     
     return success
 
