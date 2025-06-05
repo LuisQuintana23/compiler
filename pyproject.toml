@@ -22,10 +22,6 @@ dependencies = [
 packages = [{include = "compiler", from = "src"}]
 
 [tool.poetry.scripts]
-parser = "compiler.front_end.analysis.parser:main"
-semantic = "compiler.front_end.analysis.semantic:main"
-ir = "compiler.front_end.ir.ir_generator:main"
-codegen = "compiler.codegen.code_generator:main"
 cli = "compiler.cli.cli:main"
 build = "build:build"
 

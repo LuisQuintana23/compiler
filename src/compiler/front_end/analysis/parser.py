@@ -132,17 +132,9 @@ def print_concise_tree(tree, indent=0):
     elif hasattr(tree, 'type'):
         print('  ' * indent + f"Token: {tree.type} = {tree.value}")
 
-def main():
-    """Main function to demonstrate the c parser usage"""
-    parser = argparse.ArgumentParser(description='Parse C code and optionally visualize the parse tree.')
-    parser.add_argument('file_path', help='Path to the C source file to parse')
-    parser.add_argument('--tree-image', action='store_true', help='Generate a PNG visualization of the parse tree')
-    parser.add_argument('--verbose', action='store_true', help='Show detailed tree structure')
-    
-    args = parser.parse_args()
-    
+def parser(args: argparse.Namespace):
     # read the c code from file
-    code = read_c_file(args.file_path)
+    code = read_c_file(args.input)
     if code is None:
         sys.exit(1)
     
@@ -153,11 +145,11 @@ def main():
     tree = parse_c_code(parser, code)
     
     if tree:
-        print(f"Successfully parsed c code from '{args.file_path}'!")
+        print(f"Successfully parsed c code from '{args.input}'!")
         
         if args.tree_image:
             # generate tree visualization
-            output_file = Path(args.file_path).stem + '_tree'
+            output_file = Path(args.input).stem + '_tree'
             visualize_tree(tree, output_file)
         
         if args.verbose:
@@ -176,6 +168,3 @@ def main():
             # print concise tree structure
             print("\nConcise parse tree:")
             print_concise_tree(tree)
-
-if __name__ == "__main__":
-    main()

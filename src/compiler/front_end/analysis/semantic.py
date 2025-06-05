@@ -7,6 +7,7 @@ from lark import Tree, Token
 import sys
 from pathlib import Path
 import logging
+import argparse
 
 logger = logging.getLogger(__name__)
 
@@ -763,20 +764,13 @@ def analyze_c_code(tree: Tree, visualize: bool = False) -> bool:
     
     return success
 
-def main():
+def semantic(args: argparse.Namespace):
     """main function to run semantic analysis on a c file from command line"""
-    import argparse
     from .parser import create_parser, parse_c_code, read_c_file
     
-    parser = argparse.ArgumentParser(description='semantic analyzer for c code')
-    parser.add_argument('file', help='c source file to analyze')
-    parser.add_argument('--visualize', action='store_true', 
-                       help='generate visualization of symbol table')
-    
-    args = parser.parse_args()
     
     # read and parse the c file
-    code = read_c_file(args.file)
+    code = read_c_file(args.input)
     if code is None:
         sys.exit(1)
     
@@ -789,12 +783,3 @@ def main():
         else:
             print("semantic analysis failed")
             sys.exit(1)
-
-if __name__ == "__main__":
-    # when running as a script, we need to use absolute imports
-    import os
-    import sys
-    # add the parent directory to the python path
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-    from compiler.front_end.analysis.parser import create_parser, parse_c_code, read_c_file
-    main()

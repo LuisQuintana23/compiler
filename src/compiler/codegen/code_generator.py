@@ -4,10 +4,10 @@ from pathlib import Path
 import sys
 import os
 from typing import Optional, Union
-
-from ..utils import logger
-from ..front_end.ir.ir_generator import LLVMGenerator
-from ..front_end.analysis.semantic import SemanticAnalyzer
+import argparse
+from compiler.utils import logger
+from compiler.front_end.ir.ir_generator import LLVMGenerator
+from compiler.front_end.analysis.semantic import SemanticAnalyzer
 
 class CodeGenerator:
     """Generates machine code from LLVM IR using llvmlite"""
@@ -157,30 +157,10 @@ def generate_code(input_file: str, output_dir: str = None, output_name: str = No
         logger.error(f"Code generation failed: {e}")
         raise
 
-def main(input_file: Optional[str] = None, output: Optional[str] = None) -> bool:
-    """Main function to generate code from a C source file
-    
-    Args:
-        input_file: Path to the C source file (optional if called from CLI)
-        output: Output file name (optional)
-    
-    Returns:
-        bool: True if successful, False otherwise
-    """
+def codegen(args: argparse.Namespace) -> bool:
     try:
-        # if called from cli, parse arguments
-        if input_file is None:
-            import argparse
-            
-            parser = argparse.ArgumentParser(description='Generate machine code from C source file')
-            parser.add_argument('input_file', help='C source file to compile')
-            parser.add_argument('--output', '-o', help='Output file name')
-            parser.add_argument('--no-optimize', action='store_true',
-                              help='Disable optimizations')
-            
-            args = parser.parse_args()
-            input_file = args.input_file
-            output = args.output
+        input_file = args.input
+        output = args.output
         
         # determine output directory and use exact output name
         output_dir = str(Path(output).parent) if output else str(Path(input_file).parent)
@@ -192,7 +172,3 @@ def main(input_file: Optional[str] = None, output: Optional[str] = None) -> bool
     except Exception as e:
         logger.error(f"Code generation failed: {e}")
         return False
-
-if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1) 

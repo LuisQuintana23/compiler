@@ -1,8 +1,8 @@
 from llvmlite import ir
-from ..analysis.semantic import SymbolTable, Symbol, TypeKind, SemanticAnalyzer
-from ..analysis.parser import parse_c_code, create_parser, read_c_file
+from compiler.front_end.analysis.semantic import SymbolTable, Symbol, TypeKind, SemanticAnalyzer
+from compiler.front_end.analysis.parser import parse_c_code, create_parser, read_c_file
 from lark import Tree, Token
-
+import argparse
 
 class LLVMGenerator:
     def __init__(self, symbol_table: SymbolTable):
@@ -112,14 +112,10 @@ class LLVMGenerator:
         return self.module
 
 
-def main():
+def generate_ir(args: argparse.Namespace):
     import sys
 
-    if len(sys.argv) != 2:
-        print("Usage: python -m compiler.front_end.ir.ir_generator <c_file>")
-        sys.exit(1)
-
-    code = read_c_file(sys.argv[1])
+    code = read_c_file(args.input)
     if code is None:
         sys.exit(1)
 
@@ -142,6 +138,3 @@ def main():
             print(err)
         sys.exit(1)
 
-
-if __name__ == "__main__":
-    main()
