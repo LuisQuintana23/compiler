@@ -1,8 +1,8 @@
 from llvmlite import ir
-from ..analysis.semantic import SymbolTable, Symbol, TypeKind, SemanticAnalyzer
-from ..analysis.parser import parse_c_code, create_parser, read_c_file
+from compiler.front_end.analysis.semantic import SymbolTable, Symbol, TypeKind, SemanticAnalyzer
+from compiler.front_end.analysis.parser import parse_c_code, create_parser, read_c_file
 from lark import Tree, Token
-
+import argparse
 
 class LLVMGenerator:
     def __init__(self, symbol_table: SymbolTable):
@@ -34,7 +34,6 @@ class LLVMGenerator:
         return self.builder.bitcast(global_str, ir.IntType(8).as_pointer())
 
     def extract_int_literal(self, node):
-        """recursively searches for the first NUMBER token and converts it to int."""
         if isinstance(node, Token) and node.type == 'NUMBER':
             return int(node.value)
         elif isinstance(node, Tree):
@@ -61,7 +60,6 @@ class LLVMGenerator:
         if sym.body is None:
             return
 
-        # find function scope
         func_scope_id = None
         for succ in self.symbol_table.graph.successors(0):
             if self.symbol_table.graph.nodes[succ].get("name") == f"function_{sym.name}":
@@ -86,40 +84,107 @@ class LLVMGenerator:
                 for child in node.children:
                     self.generate_statement_recursive(child)
 
+    def generate_expression(self, node):
+        if isinstance(node, Token):
+            if node.type == 'NUMBER':
+                return ir.Constant(ir.IntType(32), int(node.value))
+            elif node.type == 'IDENTIFIER':
+                ptr = self.named_values.get(node.value)
+                if ptr is None:
+                    raise ValueError(f"Identificador '{node.value}' no declarado.")
+                return self.builder.load(ptr)
+
+        elif isinstance(node, Tree):
+            if node.data == 'expr':
+                if len(node.children) == 1:
+                    return self.generate_expression(node.children[0])
+                left = self.generate_expression(node.children[0])
+                op = node.children[1]
+                right = self.generate_expression(node.children[2])
+                if left is None or right is None:
+                    raise ValueError(f"Expresión mal formada en: {node.pretty()}")
+                if op.type == 'PLUS':
+                    return self.builder.add(left, right)
+                elif op.type == 'MINUS':
+                    return self.builder.sub(left, right)
+                elif op.type == 'EQ':
+                    return self.builder.icmp_signed('==', left, right)
+                elif op.type == 'NEQ':
+                    return self.builder.icmp_signed('!=', left, right)
+
+            elif node.data == 'term':
+                if len(node.children) == 1:
+                    return self.generate_expression(node.children[0])
+                left = self.generate_expression(node.children[0])
+                op = node.children[1]
+                right = self.generate_expression(node.children[2])
+                if left is None or right is None:
+                    raise ValueError(f"Término mal formado en: {node.pretty()}")
+                if op.type == 'STAR':
+                    return self.builder.mul(left, right)
+                elif op.type == 'SLASH':
+                    return self.builder.sdiv(left, right)
+                elif op.type == 'PERCENT':
+                    return self.builder.srem(left, right)
+
+            elif node.data == 'factor':
+                return self.generate_expression(node.children[0])
+
+        return None
+
     def generate_statement(self, node: Tree):
         if node.data == 'assignment_expression':
-            var_name = node.children[0].value  # IDENTIFIER
-            value = self.extract_int_literal(node.children[1])
+            var_name = node.children[0].value
+            value = self.generate_expression(node.children[1])
             var_ptr = self.named_values.get(var_name)
             if var_ptr and value is not None:
-                self.builder.store(ir.Constant(ir.IntType(32), value), var_ptr)
+                self.builder.store(value, var_ptr)
 
         elif node.data == 'function_call':
             func_name = node.children[0].value
             if func_name == "printf":
-                string_token = node.children[1].children[0].children[0]
-                printf_str = string_token.value.strip('"').encode().decode('unicode_escape')
-                str_ptr = self.emit_global_string(printf_str)
-                self.builder.call(self.printf, [str_ptr])
+                args = []
+                argument_list_node = None
+                for child in node.children:
+                    if isinstance(child, Tree) and child.data == 'argument_list':
+                        argument_list_node = child
+                        break
+
+                if argument_list_node:
+                    for i, arg in enumerate(argument_list_node.children):
+                        if isinstance(arg, Tree) and arg.data == 'argument':
+                            if i == 0 and isinstance(arg.children[0], Token) and arg.children[0].type == 'STRING':
+                                fmt_str = arg.children[0].value.strip('"').encode().decode('unicode_escape')
+                                str_ptr = self.emit_global_string(fmt_str)
+                                args.append(str_ptr)
+                            elif i > 0:
+                                expr_node = arg.children[0] if arg.children else None
+                                if expr_node:
+                                    arg_val = self.generate_expression(expr_node)
+                                    if arg_val is not None:
+                                        args.append(arg_val)
+
+                if len(args) >= 2:
+                    self.builder.call(self.printf, args)
+                else:
+                    raise ValueError("printf llamado sin suficientes argumentos para formato.")
 
         elif node.data == 'return_statement':
-            return_val = self.extract_int_literal(node.children[1])
-            if return_val is not None:
-                self.builder.ret(ir.Constant(ir.IntType(32), return_val))
+            if len(node.children) > 1:
+                return_val = self.generate_expression(node.children[1])
+                if return_val is not None:
+                    self.builder.ret(return_val)
+            else:
+                self.builder.ret(ir.Constant(ir.IntType(32), 0))
 
     def generate(self):
         self.generate_main()
         return self.module
 
-
-def main():
+def generate_ir(args: argparse.Namespace):
     import sys
 
-    if len(sys.argv) != 2:
-        print("Usage: python -m compiler.front_end.ir.ir_generator <c_file>")
-        sys.exit(1)
-
-    code = read_c_file(sys.argv[1])
+    code = read_c_file(args.input)
     if code is None:
         sys.exit(1)
 
@@ -134,14 +199,14 @@ def main():
     success = analyzer.analyze(tree)
 
     if success:
-        llvm_gen = LLVMGenerator(analyzer.symbol_table)
-        llvm_ir = llvm_gen.generate()
-        print(str(llvm_ir))
+        try:
+            llvm_gen = LLVMGenerator(analyzer.symbol_table)
+            llvm_ir = llvm_gen.generate()
+            print(str(llvm_ir))
+        except Exception as e:
+            print(f"\u274c [GENERATOR ERROR] {e}")
+            sys.exit(1)
     else:
         for err in analyzer.errors:
             print(err)
         sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
